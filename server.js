@@ -17,27 +17,26 @@ app.post('/crear-pago', async (req, res) => {
     const { items, email, reference } = req.body;
     console.log("📥 /crear-pago payload:", { items, email, reference });
 
-    // Validación básica
     if (!Array.isArray(items) || items.length === 0) {
       return res
         .status(400)
         .json({ error: 'Debes enviar un array de items con quantity y unit_price' });
     }
 
-    // Mapear al formato de Mercado Pago
+    // Mapear al formato que Mercado Pago necesita
     const preferenceItems = items.map(item => {
-      const quantity   = Number(item.quantity) || 1;
-      const unit_price = Number(item.unit_price) || 0;
+      const qty  = Number(item.quantity)   || 1;
+      const up   = Number(item.unit_price) || 0;
       console.log(
-        `▶️ Procesando item "${item.title}": unit_price=${unit_price}, quantity=${quantity}`
+        `▶️ Item "${item.title}": quantity=${qty}, unit_price=${up}`
       );
       return {
         id:          item.id,
         title:       item.title,
         description: item.description || '',
         picture_url: item.picture_url || '',
-        quantity,
-        unit_price,
+        quantity:    qty,
+        unit_price:  up,
         currency_id: 'ARS'
       };
     });
@@ -54,21 +53,21 @@ app.post('/crear-pago', async (req, res) => {
       auto_return: 'approved'
     };
 
-    console.log("🔧 preference MP a crear:", preference);
-
+    console.log("🔧 Creando preferencia MP:", preference);
     const response = await mercadopago.preferences.create(preference);
-    console.log("✅ MP preference creada:", response.body);
+    console.log("✅ Preferencia creada:", response.body);
 
     res.json({ link: response.body.init_point });
+
   } catch (error) {
     console.error("❌ Error en /crear-pago:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Rutas de prueba
+// Endpoints de prueba
 app.get("/ping", (req, res) => res.send("pong"));
-app.get("/", (req, res) => res.send("🚀 API activa y lista para recibir pagos"));
+app.get("/", (req, res) => res.send("🚀 API activa"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
