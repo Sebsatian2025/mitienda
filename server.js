@@ -12,6 +12,7 @@ mercadopago.configure({
   access_token: process.env.ACCESS_TOKEN,
 });
 
+// Recibe un array de items con quantity y unit_price numéricos
 app.post('/crear-pago', async (req, res) => {
   try {
     const { items, email, reference } = req.body;
@@ -23,13 +24,12 @@ app.post('/crear-pago', async (req, res) => {
         .json({ error: 'Debes enviar un array de items con quantity y unit_price' });
     }
 
-    // Mapear al formato que Mercado Pago necesita
+    // Mapear cada línea al formato de Mercado Pago
     const preferenceItems = items.map(item => {
-      const qty  = Number(item.quantity)   || 1;
-      const up   = Number(item.unit_price) || 0;
-      console.log(
-        `▶️ Item "${item.title}": quantity=${qty}, unit_price=${up}`
-      );
+      const qty  = Number(item.quantity);
+      const up   = Number(item.unit_price);
+      console.log(`▶️ Procesando item "${item.title}": qty=${qty}, unit_price=${up}`);
+
       return {
         id:          item.id,
         title:       item.title,
@@ -55,10 +55,9 @@ app.post('/crear-pago', async (req, res) => {
 
     console.log("🔧 Creando preferencia MP:", preference);
     const response = await mercadopago.preferences.create(preference);
-    console.log("✅ Preferencia creada:", response.body);
+    console.log("✅ MP preference creada:", response.body);
 
     res.json({ link: response.body.init_point });
-
   } catch (error) {
     console.error("❌ Error en /crear-pago:", error);
     res.status(500).json({ error: error.message });
@@ -67,9 +66,7 @@ app.post('/crear-pago', async (req, res) => {
 
 // Endpoints de prueba
 app.get("/ping", (req, res) => res.send("pong"));
-app.get("/", (req, res) => res.send("🚀 API activa"));
+app.get("/", (req, res) => res.send("🚀 API activa y lista para recibir pagos"));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
