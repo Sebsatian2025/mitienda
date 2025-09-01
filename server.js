@@ -7,59 +7,49 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configurar Mercado Pago con el token de entorno
+// Configuración de Mercado Pago
 mercadopago.configure({
-  access_token: process.env.ACCESS_TOKEN
+  access_token: process.env.ACCESS_TOKEN,
 });
 
-// Ruta para crear el pago
+// Ruta para crear pago
 app.post('/crear-pago', async (req, res) => {
   try {
-    // 🚨 Ahora esperamos que nos mandes el precio final desde el frontend
-    const finalPrice = req.body.total; // ejemplo: { total: 50000, email: "...", reference: "..." }
+    const { total, email, reference, title } = req.body;
 
-    if (!finalPrice) {
-      return res.status(400).json({ error: "El precio final es obligatorio" });
-    }
-
-    // Creamos UN SOLO ITEM con el precio total
+    // Creamos UNA SOLA línea de item con el precio final
     const preference = {
       items: [
         {
-          title: "Compra en mi tienda",   // Texto genérico para el pago
-          description: "Carrito completo",
-          quantity: 1,
-          unit_price: Number(finalPrice)  // Usamos el total directamente
-        }
+          title: title || "Compra en mi tienda",
+          quantity: 1,         // siempre 1
+          unit_price: Number(total), // el total final
+          currency_id: "ARS",  // ajusta según corresponda
+        },
       ],
-      payer: { email: req.body.email },
-      external_reference: req.body.reference,
-      back_urls: {
-        success: "https://tuweb.com/success",
-        failure: "https://tuweb.com/failure",
-        pending: "https://tuweb.com/pending"
+      payer: {
+        email,
       },
-      auto_return: "approved"
+      external_reference: reference,
     };
 
-    // Crear preferencia en Mercado Pago
     const response = await mercadopago.preferences.create(preference);
-
     res.json({ link: response.body.init_point });
   } catch (error) {
-    console.error("Error al crear preferencia:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Endpoint de prueba
-app.get("/ping", (req, res) => res.send("pong"));
+// Rutas de prueba
+app.get("/ping", (req, res) => {
+  res.send("pong");
+});
 
-// Inicio del servidor
+app.get("/", (req, res) => {
+  res.send("🚀 API activa y lista para recibir pagos");
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
-
-// Página raíz
-app.get("/", (req, res) => 
-  res.send("🚀 API activa y lista para recibir pagos")
-);
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en puerto ${PORT}`);
+});
