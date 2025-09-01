@@ -12,42 +12,63 @@ mercadopago.configure({
   access_token: process.env.ACCESS_TOKEN,
 });
 
-// Ruta para crear pago
 app.post('/crear-pago', async (req, res) => {
   try {
-    const { total, email, reference, title } = req.body;
+    const { items, email, reference } = req.body;
+    console.log("📥 /crear-pago payload:", { items, email, reference });
 
-    // Creamos UNA SOLA línea de item con el precio final
+    // Validación básica
+    if (!Array.isArray(items) || items.length === 0) {
+      return res
+        .status(400)
+        .json({ error: 'Debes enviar un array de items con quantity y unit_price' });
+    }
+
+    // Mapear al formato de Mercado Pago
+    const preferenceItems = items.map(item => {
+      const quantity   = Number(item.quantity) || 1;
+      const unit_price = Number(item.unit_price) || 0;
+      console.log(
+        `▶️ Procesando item "${item.title}": unit_price=${unit_price}, quantity=${quantity}`
+      );
+      return {
+        id:          item.id,
+        title:       item.title,
+        description: item.description || '',
+        picture_url: item.picture_url || '',
+        quantity,
+        unit_price,
+        currency_id: 'ARS'
+      };
+    });
+
     const preference = {
-      items: [
-        {
-          title: title || "Compra en mi tienda",
-          quantity: 1,         // siempre 1
-          unit_price: Number(total), // el total final
-          currency_id: "ARS",  // ajusta según corresponda
-        },
-      ],
-      payer: {
-        email,
-      },
+      items: preferenceItems,
+      payer: { email },
       external_reference: reference,
+      back_urls: {
+        success: 'https://tu-dominio.com/success',
+        failure: 'https://tu-dominio.com/failure',
+        pending: 'https://tu-dominio.com/pending'
+      },
+      auto_return: 'approved'
     };
 
+    console.log("🔧 preference MP a crear:", preference);
+
     const response = await mercadopago.preferences.create(preference);
+    console.log("✅ MP preference creada:", response.body);
+
     res.json({ link: response.body.init_point });
   } catch (error) {
+    console.error("❌ Error en /crear-pago:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Rutas de prueba
-app.get("/ping", (req, res) => {
-  res.send("pong");
-});
-
-app.get("/", (req, res) => {
-  res.send("🚀 API activa y lista para recibir pagos");
-});
+app.get("/ping", (req, res) => res.send("pong"));
+app.get("/", (req, res) => res.send("🚀 API activa y lista para recibir pagos"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
